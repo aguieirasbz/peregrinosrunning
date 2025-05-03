@@ -1,1 +1,1 @@
-web: python peregrinos.py
+web: gunicorn peregrinos:server
