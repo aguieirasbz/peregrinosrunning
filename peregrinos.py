@@ -5,23 +5,26 @@ import plotly.graph_objs as go
 import pandas as pd
 
 # Dados
-semanas = ['05/04/2025', '12/04/2025', '19/04/2025', '26/04/2025']
-
+semanas = ['05/04/2025', '12/04/2025', '19/04/2025', '26/04/2025', '03/05/2025']
 peregrinos = {
-    'Aldecir': [0, 4.08, 7.23, 0],
-    'Almir': [0, 3, 0, 0],
-    'André Simas': [0, 23.23, 0, 21.10],
-    'Diego': [19, 10.4, 15.07, 0],
-    'Edson': [0, 16.1, 7, 0],
-    'Eduardo Silveira': [0, 57.84, 58.55, 6.42],
-    'Emanuel Felipe': [5.02, 13.19, 0, 10.18],
-    'Jhalyson': [6, 13.51, 12.93, 5.32],
-    'Juarez': [15.25, 7.01, 10, 40.10],
-    'Luiza Helena': [0, 27.33, 31.36, 30.46],
-    'Luyper': [4.6, 4.6, 10.5, 0],
-    'Maurício': [0, 11, 17.94, 8.41],
-    'Ricardo': [53, 75, 75, 60]
+    'Aldecir': [0, 4.08, 7.23, 0, 0],
+    'Almir': [0, 3, 0, 0, 5],
+    'André Simas': [0, 23.23, 0, 21.10, 31.5],
+    'Diego': [19, 10.4, 15.07, 0, 3],
+    'Edson': [0, 16.1, 7, 0, 17.4],
+    'Eduardo Silveira': [0, 57.84, 58.55, 6.42, 0],
+    'Emanuel Felipe': [5.02, 13.19, 0, 10.18, 0],
+    'Jhalyson': [6, 13.51, 12.93, 5.32, 0],
+    'Juarez': [15.25, 7.01, 10, 40.10, 0],
+    'Luiza Helena': [0, 27.33, 31.36, 30.46, 51.94],
+    'Luyper': [4.6, 4.6, 10.5, 0, 10.8],
+    'Maurício': [0, 11, 17.94, 8.41, 0],
+    'Ricardo': [53, 75, 75, 60, 43],
+    'Edvanei': [0, 0, 0, 0, 1],
+    'Gustavo': [0, 0, 0, 0, 7.21],
+    'Samuel': [0, 0, 0, 0, 12.24]
 }
+
 
 # DataFrame
 df = pd.DataFrame(peregrinos).T
@@ -42,6 +45,11 @@ for semana in semanas:
     ranking.rename(columns={'index': 'Participante', semana: 'Quilometragem (km)'}, inplace=True)
     rankings_semanais[semana] = ranking
 
+# Cores padrão para cada participante (opcional)
+cores_participantes = {
+    nome: f'hsl({i * 30 % 360}, 70%, 50%)' for i, nome in enumerate(peregrinos.keys())
+}
+
 # App
 app = dash.Dash(__name__)
 app.title = "Dashboard de Corrida"
@@ -56,7 +64,7 @@ app.layout = html.Div([
         dcc.Dropdown(
             id='dropdown-semana',
             options=[{'label': semana, 'value': semana} for semana in semanas],
-            value=semanas[-1],  # Define a última semana como padrão
+            value=semanas[-1],
             style={'width': '50%', 'margin': '0 auto'}
         )
     ], style={'padding': '10px'}),
@@ -97,6 +105,32 @@ app.layout = html.Div([
     # Gráfico Individual Dinâmico
     html.Div([
         dcc.Graph(id='grafico-individual')
+    ], style={'padding': '10px'}),
+
+    # Gráfico Comparativo com todos os participantes (interativo via legenda)
+    html.Div([
+        dcc.Graph(
+            id='grafico-comparativo',
+            figure={
+                'data': [
+                    go.Scatter(
+                        x=semanas,
+                        y=peregrinos[nome],
+                        mode='lines+markers',
+                        name=nome,
+                        line=dict(color=cores_participantes.get(nome, '#888'), width=2)
+                    ) for nome in peregrinos.keys()
+                ],
+                'layout': go.Layout(
+                    title='📊 Evolução da Quilometragem por Participante',
+                    xaxis={'title': 'Semana'},
+                    yaxis={'title': 'Quilometragem (km)'},
+                    template='plotly_white',
+                    hovermode='x unified',
+                    legend=dict(orientation='h', y=-0.3)
+                )
+            }
+        )
     ], style={'padding': '10px'}),
 
     # Gráfico Pódio Top 6
@@ -161,18 +195,16 @@ app.layout = html.Div([
     ])
 ], style={'maxWidth': '1200px', 'margin': '0 auto'})
 
-# Callback para atualizar Tabela Semanal + Gráfico Individual
+# Callback para atualizar Tabela Geral e Gráfico Individual
 @app.callback(
     [Output('tabela-geral', 'data'),
      Output('grafico-individual', 'figure')],
     Input('dropdown-semana', 'value')
 )
 def atualizar_componentes(selecionada):
-    # Atualiza a tabela de ranking geral
     df_geral = df[['Total']].sort_values(by='Total', ascending=False).reset_index()
     df_geral.rename(columns={'index': 'Participante', 'Total': 'Quilometragem Total (km)'}, inplace=True)
 
-    # Atualiza o gráfico individual
     fig = {
         'data': [
             go.Bar(
@@ -188,7 +220,6 @@ def atualizar_componentes(selecionada):
             template='plotly_white'
         )
     }
-
     return df_geral.to_dict('records'), fig
 
 # Rodar o app
